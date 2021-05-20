@@ -34,27 +34,32 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
           new VirtualDirectory("<quote compilation output>")
     end outDir
 
-    val ctx = {
+    val ctx = 
       val ctx0 = QuotesCache.init(initCtx.fresh)
       val ctx1 = setup(settings.compilerArgs.toArray :+ "dummy.scala", ctx0).get._2
       setCompilerSettings(ctx1.fresh.setSetting(ctx1.settings.outputDir, outDir), settings)
-    }
+    
 
-    new QuoteCompiler().newRun(ctx).compileExpr(exprBuilder) match
-      case Right(value) =>
-        value.asInstanceOf[T]
+    val res = 
+      new QuoteCompiler().newRun(ctx).compileExpr(exprBuilder) match
+        case Right(value) =>
+          value.asInstanceOf[T]
 
-      case Left(classname) =>
-        assert(!ctx.reporter.hasErrors)
+        case Left(classname) =>
+          assert(!ctx.reporter.hasErrors)
 
-        val classLoader = new AbstractFileClassLoader(outDir, appClassloader)
+          val classLoader = new AbstractFileClassLoader(outDir, appClassloader)
 
-        val clazz = classLoader.loadClass(classname)
-        val method = clazz.getMethod("apply")
-        val inst = clazz.getConstructor().newInstance()
+          val clazz = classLoader.loadClass(classname)
+          val method = clazz.getMethod("apply")
+          val inst = clazz.getConstructor().newInstance()
 
-        method.invoke(inst).asInstanceOf[T]
-    end match
+          method.invoke(inst).asInstanceOf[T]
+      end match
+
+    contextBase.reset()
+
+    res
 
   end run
 
